@@ -1,21 +1,55 @@
-# app.py
-
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import time
 import threading
+import requests
+import datetime
+import math # Needed for wind speed calculation helper
+import sys
+import os
+
+# --- MODEL IMPORT ---
+# Ensure 'irrigation_model.py' is in the same directory!
+try:
+    from irrigation_model import get_daily_irrigation_recommendation, get_location_data
+except ImportError:
+    print("FATAL ERROR: Could not import 'irrigation_model.py'. Ensure the model file is present.")
+    sys.exit(1)
 
 app = Flask(__name__)
-# Enable CORS for all origins, allowing your React app to connect
 CORS(app) 
 
-# --- In-Memory Plant State (Simulates Database/Hardware State) ---
+# --- CONFIGURATION (Agronomy & Location) ---
 
-# This object holds the current state for all your plants, indexed by plantId.
+# Location data (Fetching Zaghouan data once on startup)
+LOCATION_NAME = "Zaghouan"
+LOCATION_DATA = get_location_data(LOCATION_NAME) 
+
+if not LOCATION_DATA:
+    print(f"FATAL ERROR: Could not get location data for {LOCATION_NAME}. Using default placeholders.")
+    # Use fallback data if API call fails
+    LOCATION_DATA = {
+        "latitude": 36.41, 
+        "longitude": 10.14, 
+        "elevation": 420.0,
+        "timezone": "Africa/Tunis",
+        "name": LOCATION_NAME # Add name for logging
+    }
+
+# Crop-specific parameters for the AI model
+CROP_AGRONOMY = {
+    # Kc (Crop Coefficient), Root Depth (mm), Field Capacity (%), Wilting Point (%)
+    'tomato-101': {'Kc': 1.0, 'root_depth_mm': 600, 'field_capacity': 35.0, 'wilting_point': 15.0},
+    'mint-202': {'Kc': 0.95, 'root_depth_mm': 200, 'field_capacity': 35.0, 'wilting_point': 15.0},
+    'onion-303': {'Kc': 1.1, 'root_depth_mm': 400, 'field_capacity': 35.0, 'wilting_point': 15.0},
+}
+
+
+# --- In-Memory Plant State (Simulates Database/Hardware State) ---
 plant_states = {
-    'tomato-101': {'waterLevel': 75.0, 'isPumpOn': False},
-    'mint-202': {'waterLevel': 45.0, 'isPumpOn': True},
-    'onion-303': {'waterLevel': 15.0, 'isPumpOn': False},
+    'tomato-101': {'waterLevel': 75.0, 'isPumpOn': False}, # Sufficient water (Will likely get 'OFF' recommendation)
+    'mint-202': {'waterLevel': 45.0, 'isPumpOn': True},    # Watering in progress (Moisture increasing)
+    'onion-303': {'waterLevel': 15.0, 'isPumpOn': False},  # Critically low water (Will likely get 'ON' recommendation)
 }
 
 # --- Polling Simulation Logic (Runs in a separate thread) ---
@@ -42,7 +76,7 @@ def run_simulation():
 
 # Start the simulation thread in the background
 simulation_thread = threading.Thread(target=run_simulation)
-simulation_thread.daemon = True # Allows the main program to exit even if thread is running
+simulation_thread.daemon = True 
 simulation_thread.start()
 
 
@@ -51,23 +85,49 @@ simulation_thread.start()
 @app.route('/api/v1/plants/<plant_id>/status', methods=['GET'])
 def get_plant_status(plant_id):
     """
-    Endpoint 1: GET Status (Read Sensor Data)
-    Used by the frontend's polling mechanism.
+    Endpoint 1: GET Status (Read Sensor Data) - NOW INCLUDES AI RECOMMENDATION
     """
     state = plant_states.get(plant_id)
 
     if not state:
         return jsonify({'error': f'Plant ID {plant_id} not found.'}), 404
 
-    # Log the request
-    print(f"[GET] Status requested for {plant_id}: Water={state['waterLevel']}%, Pump={state['isPumpOn']}")
+    # 1. Get current sensor data
+    current_water_level = state['waterLevel']
+    
+    # 2. Get agronomy parameters for the plant
+    agronomy = CROP_AGRONOMY.get(plant_id)
+    if not agronomy:
+        # Fallback if plant is not defined in agronomy settings
+        agronomy = CROP_AGRONOMY['tomato-101'] # Default to Tomato settings
 
-    # Return the current state
+    # 3. Call the sophisticated AI model
+    ai_report = get_daily_irrigation_recommendation(
+        lat=LOCATION_DATA['latitude'],
+        lon=LOCATION_DATA['longitude'],
+        z=LOCATION_DATA['elevation'],
+        Kc=agronomy['Kc'],
+        soil_moisture_percent=current_water_level,
+        field_capacity=agronomy['field_capacity'],
+        wilting_point=agronomy['wilting_point'],
+        root_depth_mm=agronomy['root_depth_mm']
+    )
+
+    # 4. Determine Simple Alert based on the AI's recommendation
+    # An alert is active if the AI says the pump should be ON.
+    is_alert_active = ai_report.get('recommended_pump_state', False)
+    
+    # Log the request
+    print(f"[GET] Status requested for {plant_id}. Water={current_water_level}%. AI Rec: {'ON' if is_alert_active else 'OFF'}")
+
+    # Return the current state + AI report
     return jsonify({
         'plantId': plant_id,
-        'waterLevel': state['waterLevel'],
+        'waterLevel': current_water_level,
         'isPumpOn': state['isPumpOn'],
-        'lastUpdated': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+        'alertActive': is_alert_active, # Alert is triggered by AI recommendation
+        'lastUpdated': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'aiReport': ai_report # Full, detailed AI recommendation report
     })
 
 
@@ -75,7 +135,6 @@ def get_plant_status(plant_id):
 def update_pump_state(plant_id):
     """
     Endpoint 2: PUT Pump Control (Write Command)
-    Used by the frontend's button clicks.
     """
     state_data = request.get_json()
     new_state = state_data.get('state')
@@ -88,10 +147,7 @@ def update_pump_state(plant_id):
     if not isinstance(new_state, bool):
         return jsonify({'error': 'Invalid state value. Must be true or false.'}), 400
 
-    # --- Hardware Interface Point ---
-    # In a real application, THIS is where you would send a command 
-    # (e.g., via MQTT or a direct HTTP call) to your physical hardware.
-    # For now, we just update the in-memory state:
+    # Update the in-memory state:
     plant['isPumpOn'] = new_state
 
     # Log the command
@@ -107,8 +163,8 @@ def update_pump_state(plant_id):
 
 if __name__ == '__main__':
     print('--- SMART GARDEN MOCK BACKEND (Flask) ---')
-    print('Starting background water simulation...')
+    print(f"Location configured for: {LOCATION_DATA.get('name', LOCATION_NAME)} ({LOCATION_DATA['latitude']:.2f}, {LOCATION_DATA['longitude']:.2f})")
+    print('Starting background water simulation and AI integration...')
     print('-------------------------------------------')
     # Use 0.0.0.0 to make it accessible from other devices/containers if needed
-    # Default port is 5000
     app.run(host='0.0.0.0', port=5000, debug=False)

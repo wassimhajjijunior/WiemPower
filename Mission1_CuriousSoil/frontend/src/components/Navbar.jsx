@@ -4,9 +4,8 @@ import { useState } from 'react';
 export default function Navbar({ onSectionChange, activeSection }) {
 
   const navStyle = {
-    background: 'linear-gradient(135deg, #9333ea, #db2777)',
+    background: 'transparent',
     padding: '16px',
-    boxShadow: '0 4px 20px rgba(147, 51, 234, 0.25)',
     position: 'relative',
     overflow: 'hidden',
     '&::before': {
@@ -49,19 +48,16 @@ export default function Navbar({ onSectionChange, activeSection }) {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '8px',
+    gap: '2px',
     background: isActive 
       ? 'rgba(255, 255, 255, 0.95)' 
       : 'rgba(255, 255, 255, 0.1)',
-    padding: '12px 24px',
+    padding: '12px 12px',
     border: '2px solid',
     borderColor: isActive ? '#fff' : 'rgba(255, 255, 255, 0.2)',
     borderRadius: '20px',
-    boxShadow: isActive 
-      ? '0 8px 20px rgba(219, 39, 119, 0.3), inset 0 0 20px rgba(147, 51, 234, 0.1)' 
-      : '0 4px 12px rgba(0, 0, 0, 0.1)',
     cursor: 'pointer',
-    minWidth: '140px',
+    minWidth: '90px',
     transform: `translateY(${isActive ? '-2px' : '0'}) scale(${isActive ? '1.02' : '1'})`,
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     position: 'relative',
@@ -89,12 +85,12 @@ export default function Navbar({ onSectionChange, activeSection }) {
   });
 
   const iconStyle = (isActive) => ({
-    width: '32px',
-    height: '32px',
-    color: isActive ? '#db2777' : 'rgba(255, 255, 255, 0.9)',
+    width: '25px',
+    height: '25px',
+    color: isActive ? '#000000ff' : 'rgba(255, 255, 255, 0.9)',
     transition: 'all 0.3s ease',
     filter: isActive 
-      ? 'drop-shadow(0 2px 4px rgba(219, 39, 119, 0.3))' 
+      ? 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))' 
       : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))',
     transform: 'scale(1)',
     '&:hover': {
@@ -105,7 +101,7 @@ export default function Navbar({ onSectionChange, activeSection }) {
   const textStyle = (isActive) => ({
     fontSize: '18px',
     fontWeight: '700',
-    color: isActive ? '#db2777' : 'rgba(255, 255, 255, 0.9)',
+    color: isActive ? '#000000ff' : 'rgba(255, 255, 255, 0.9)',
     fontFamily: 'Arial, sans-serif',
     textAlign: 'center',
     direction: 'rtl',

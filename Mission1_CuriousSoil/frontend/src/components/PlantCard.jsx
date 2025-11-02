@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo } from 'react';
 import onion from '../assets/onion.jpg'; 
 import tomato from '../assets/tomatee.jpg';
 import mint from '../assets/mint.jpg'; 
+import fields from '../assets/fields.jpg';
 
 // --- Configuration ---
 // IMPORTANT: Replace with your actual backend URL.
@@ -103,13 +104,13 @@ function PlantCard({ image, description, plantName, plantId }) {
 
   // Memoize styles that depend on hover/state for performance
   const cardStyle = useMemo(() => ({
-    width: '100%',
-    maxWidth: '380px',
-    backgroundColor: 'white',
+    width: '320px',
+    margin: '32px auto',
+    background: 'rgba(255,255,255,0.65)',
     borderRadius: '20px',
     boxShadow: isHovering 
-      ? '0 12px 24px rgba(0, 0, 0, 0.15), 0 0 0 2px #16a34a22' 
-      : '0 4px 12px rgba(0, 0, 0, 0.1)',
+      ? '0 12px 24px rgba(0, 0, 0, 0.18), 0 0 0 2px #16a34a33' 
+      : '0 4px 12px rgba(0, 0, 0, 0.13)',
     overflow: 'hidden',
     fontFamily: 'Arial, sans-serif',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -118,14 +119,9 @@ function PlantCard({ image, description, plantName, plantId }) {
     flexDirection: 'column',
     direction: 'rtl',
     position: 'relative',
-    '&::before': {
-      content: '""',
-      position: 'absolute',
-      inset: 0,
-      background: 'linear-gradient(45deg, #16a34a11, transparent)',
-      opacity: isHovering ? 1 : 0,
-      transition: 'opacity 0.3s ease',
-    }
+    backdropFilter: 'blur(1px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    border: '1px solid rgba(60,60,60,0.12)',
   }), [isHovering]);
 
   // Styles that depend on pump state and animation
@@ -201,9 +197,9 @@ function PlantCard({ image, description, plantName, plantId }) {
   const mediaAndWaterContainerStyle = { display: 'flex', alignItems: 'flex-start', padding: '0.75rem 0.75rem 0.25rem 0.75rem', gap: '1rem' };
   const imageContainerStyle = { flex: 1, aspectRatio: '4/3', overflow: 'hidden', position: 'relative', borderRadius: '10px', backgroundColor: '#f3f4f6' };
   const imageStyle = { width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', transition: 'transform 0.35s ease, opacity 0.35s ease', transform: isHovering ? 'scale(1.03)' : 'scale(1)', opacity: isImageLoading ? 0 : 1, display: 'block' };
-  const imageOverlayStyle = { position: 'absolute', right: '12px', bottom: '12px', backgroundColor: 'rgba(0,0,0,0.45)', color: 'white', padding: '8px 12px', borderRadius: '10px', fontSize: '17px', fontWeight: '700', lineHeight: 1, boxShadow: '0 2px 6px rgba(0,0,0,0.25)' };
+  const imageOverlayStyle = { position: 'absolute', right: '12px', bottom: '12px', backgroundColor: 'rgba(30,30,30,0.7)', color: '#fff', padding: '8px 12px', borderRadius: '10px', fontSize: '17px', fontWeight: '700', lineHeight: 1, boxShadow: '0 2px 6px rgba(0,0,0,0.32)' };
   const waterLevelWrapperStyle = { flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center' };
-  const descriptionStyle = { padding: '0.75rem', fontSize: '0.85rem', color: '#4b5563', lineHeight: 1.6, textAlign: 'center', borderTop: '1px solid #f3f4f6' };
+  const descriptionStyle = { padding: '0.75rem', fontSize: '0.95rem', color: '#222', lineHeight: 1.7, textAlign: 'center', borderTop: '1px solid #e5e7eb', background: 'rgba(255,255,255,0.85)' };
 
   // --- Loading / Error Handling UI ---
   if (loadingStatus && waterLevel === null) {
@@ -297,13 +293,13 @@ function PlantCard({ image, description, plantName, plantId }) {
         <div className="status-badge" style={{ 
           padding: '0.4rem 0.8rem',
           borderRadius: '8px',
-          fontSize: '0.75rem',
+          fontSize: '0.8rem',
           fontWeight: 'bold',
           background: isPumpOn 
-            ? 'linear-gradient(45deg, #16a34a11, #16a34a22)'
-            : 'linear-gradient(45deg, #64748b11, #64748b22)',
-          border: `1px solid ${isPumpOn ? '#16a34a33' : '#64748b33'}`,
-          color: isPumpOn ? '#16a34a' : '#64748b',
+            ? 'linear-gradient(45deg, #16a34a22, #e5e7eb 80%)'
+            : 'linear-gradient(45deg, #64748b22, #e5e7eb 80%)',
+          border: `1px solid ${isPumpOn ? '#16a34a55' : '#64748b55'}`,
+          color: isPumpOn ? '#14532d' : '#334155',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -322,8 +318,8 @@ function PlantCard({ image, description, plantName, plantId }) {
 
         {/* Date Badge */}
         <div className="status-badge" style={{ 
-          fontSize: '0.75rem',
-          color: '#64748b',
+          fontSize: '0.8rem',
+          color: '#222',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -331,8 +327,8 @@ function PlantCard({ image, description, plantName, plantId }) {
           direction: 'rtl',
           padding: '0.3rem 0.6rem',
           borderRadius: '6px',
-          background: 'linear-gradient(45deg, #64748b08, #64748b11)',
-          border: '1px solid #64748b22'
+          background: 'rgba(255,255,255,0.85)',
+          border: '1px solid #e5e7eb'
         }}>
           {(() => {
             const date = new Date();
@@ -424,16 +420,17 @@ const plantData = [
 export default function GardenDashboard() {
   const dashboardStyle = {
     padding: '2rem',
-    backgroundColor: '#f9fafb',
+    background: `url(${fields}) center/cover no-repeat`,
     minHeight: '100vh',
     fontFamily: 'Arial, sans-serif',
     direction: 'rtl',
+    backgroundBlendMode: 'lighten',
   };
 
   const titleStyle = {
     textAlign: 'center',
     marginBottom: '2rem',
-    color: '#1f2937',
+    color: '#f0f0f0ff',
     fontSize: '2rem',
     fontWeight: '800',
     borderBottom: '3px solid #16a34a',
